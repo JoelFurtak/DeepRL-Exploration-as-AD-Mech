@@ -84,12 +84,16 @@ class DQNAgent:
         self.env = gym.make('CartPole-v1')                              # Max Score: v0 = 200, v1 = 500
         self.state_size = self.env.observation_space.shape[0]           # Possible states
         self.action_size = self.env.action_space.n                      # Possible actions
-        self.EPISODES = 500
+        self.EPISODES = 700
         self.memory = ReplayBuffer(self.state_size, max_size=10000)
         self.gamma = 0.99                                               # Reward discount
-        self.explporation = 0.2                                                                                            
+        self.exploration = 0.2             
+        #self.exploration = 1.0 
+        self.exploration_min = 0.05                                                                              
+        #self.update_exploration = 1000
         self.update_exploration = 1000                                  # Update Exploration rate every x steps               
-        self.explporation_decay = 0.99                                  # Exploration decay                                  
+        self.exploration_decay = 0.99
+        #self.exploration_decay = 0.95                                  # Exploration decay                                  
         self.batch_size = 128                                           # Amount read out of memory
         self.target_update = 10                                         # Update Every 10 Steps
         self.steps_done = 0
@@ -111,30 +115,33 @@ class DQNAgent:
         self.episode_scores = []
 
     def select_action(self, state):
-        print("Episode: {}/{}, Steps done: {}, Exploration %: {}".format(self.current_episode[-1], self.EPISODES, self.steps_done, self.explporation))     
+        print("Episode: {}/{}, Steps done: {}, Exploration %: {}".format(self.current_episode[-1], self.EPISODES, self.steps_done, self.exploration))     
         if self.memory.size < self.random_steps:
             action = np.random.randint(0, self.action_size)
         else:
             with torch.no_grad():
                 state = torch.FloatTensor(state.reshape(1, -1)).to(device)
-                if np.random.rand() < self.explporation:
+                if np.random.rand() < self.exploration:
                     action = np.random.randint(0, self.action_size)
                 else:
                     action = self.policy_net(state).argmax().item()
         if self.steps_done % self.update_exploration == 0:
-            self.explporation *= self.explporation_decay
+            self.exploration *= self.exploration_decay
+            self.exploration = max(self.exploration_min, self.exploration)
         return action
 
     def seaborn(self):
         '''Plot with Seaborn'''
         episode = np.array(self.current_episode)
         scores = np.array(self.episode_scores)
-        avrg = np.array(np.mean(scores))
-        d = {'Episode': episode, 'Score': scores, 'Average': avrg}
-        pdscores = pd.DataFrame(d)
+        df = {'episode': episode, 'score': scores}
+        pdscores = pd.DataFrame(df)
+        pdscores.to_csv('./data/3k_random_steps/run#3/results.csv')
+        #pdscores.score = pdscores.score.mean()
+        #print(pdscores)
         #pdscores2 = pd.melt(pdscores, ['Episode'], value_name='Score')                     
 
-        sns.lineplot(x='Episode', y='Score',data=pdscores)
+        sns.lineplot(x='episode', y='score',data=pdscores)
 
         plt.pause(0.001)
         if is_ipython:
@@ -206,12 +213,12 @@ class DQNAgent:
                 if done:
                     self.episode_scores.append(t + 1)
                     break
-            self.plot_scores()
-            #self.seaborn()
+            #self.plot_scores()
             if i % self.target_update == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
         self.env.close()
         print("Training complete")
+        self.seaborn()
         plt.ioff()
         plt.show()
 
