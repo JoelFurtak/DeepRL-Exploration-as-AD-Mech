@@ -88,12 +88,9 @@ class DQNAgent:
         self.memory = ReplayBuffer(self.state_size, max_size=10000)
         self.gamma = 0.99                                               # Reward discount
         self.exploration = 0.2             
-        #self.exploration = 1.0 
         self.exploration_min = 0.05                                                                              
-        #self.update_exploration = 1000
         self.update_exploration = 1000                                  # Update Exploration rate every x steps               
-        self.exploration_decay = 0.99
-        #self.exploration_decay = 0.95                                  # Exploration decay                                  
+        self.exploration_decay = 0.99                                   # Exploration decay                                  
         self.batch_size = 128                                           # Amount read out of memory
         self.target_update = 10                                         # Update Every 10 Steps
         self.steps_done = 0
@@ -131,39 +128,13 @@ class DQNAgent:
         return action
 
     def seaborn(self):
-        '''Plot with Seaborn'''
         episode = np.array(self.current_episode)
         scores = np.array(self.episode_scores)
         df = {'episode': episode, 'score': scores}
         pdscores = pd.DataFrame(df)
         pdscores.to_csv('./data/3k_random_steps/run#3/results.csv')
-        #pdscores.score = pdscores.score.mean()
-        #print(pdscores)
-        #pdscores2 = pd.melt(pdscores, ['Episode'], value_name='Score')                     
 
         sns.lineplot(x='episode', y='score',data=pdscores)
-
-        plt.pause(0.001)
-        if is_ipython:
-            display.clear_output(wait=True)
-            display.display(plt.gcf())
-
-
-
-    def plot_scores(self):
-        '''Plot with matplotlib'''
-        plt.figure(1)
-        plt.clf()
-        scores = torch.tensor(self.episode_scores, dtype=torch.float)
-        plt.title('Training Scores')
-        plt.xlabel('Episode')
-        plt.ylabel('Score')
-        plt.plot(scores.numpy())
-        # 100 EP average
-        if len(scores) >= 100:
-            means = scores.unfold(0, 100, 1).mean(1).view(-1)
-            means = torch.cat((torch.zeros(99), means))
-            plt.plot(means.numpy())
 
         plt.pause(0.001)
         if is_ipython:
@@ -213,7 +184,6 @@ class DQNAgent:
                 if done:
                     self.episode_scores.append(t + 1)
                     break
-            #self.plot_scores()
             if i % self.target_update == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
         self.env.close()
