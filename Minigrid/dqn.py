@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+from torch.nn.utils import spectral_norm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -42,7 +43,9 @@ class DQN(nn.Module):
         self.Q = nn.Sequential(
             nn.Linear(state_size, hidden_shape),
             nn.ReLU(),
-            nn.Linear(hidden_shape, hidden_shape),
+            #nn.Linear(hidden_shape, hidden_shape),
+            #nn.ReLU(),
+            spectral_norm(nn.Linear(hidden_shape, hidden_shape)),
             nn.ReLU(),
             nn.Linear(hidden_shape, action_size),
             nn.Identity()
@@ -109,25 +112,27 @@ class Memory(object):
 
 
 class DQN_Agent:
-    def __init__(self):
-        self.env = FlatObsWrapper(gym.make('MiniGrid-Empty-Random-6x6-v0'))
+    def __init__(self, env_name, seed, mem_size, gamma, eps, eps_min, update_eps, eps_decay, batch_size, target_update, hidden_shape, lr, tau):
+        self.env = FlatObsWrapper(gym.make(env_name))
+        self.env.seed(seed)
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.n
         
-        self.memory = Memory(self.state_size, max_size=20000)
-        self.gamma = 0.99
-        self.epsilon = 1.00
-        self.epsilon_min = 0.05
-        self.update_epsilon = 500
-        self.epsilon_decay = 0.90
-        self.batch_size = 1028
-        self.target_update = 10
+        self.memory = Memory(self.state_size, max_size=mem_size)
+        self.gamma = gamma
+        self.epsilon = eps
+        self.epsilon_min = eps_min
+        self.update_epsilon = update_eps
+        self.epsilon_decay = eps_decay
+        self.batch_size = batch_size
+        self.target_update = target_update
+
         self.steps_done = 0
         self.max_steps = 500
 
-        self.hidden_shape = 250
-        self.lr = 0.0001
-        self.tau  = 0.005
+        self.hidden_shape = hidden_shape
+        self.lr = lr
+        self.tau  = tau
 
         self.env.reset()
 
@@ -227,6 +232,6 @@ class DQN_Agent:
 
 
 
-Agent = DQN_Agent()
-Agent.train(500)
+#Agent = DQN_Agent()
+#Agent.train(500)
 
