@@ -1,7 +1,7 @@
 from turtle import forward
 import gym
 import gym_minigrid
-from gym_minigrid.wrappers import FlatObsWrapper
+from gym_minigrid.wrappers import FlatObsWrapper, RGBImgPartialObsWrapper, ImgObsWrapper
 
 import numpy as np
 import matplotlib
@@ -20,6 +20,8 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 from torch.nn.utils import spectral_norm
 
+from memory import Memory
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Matplotlib
@@ -27,24 +29,12 @@ is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
 
-#env = FlatObsWrapper(gym.make('MiniGrid-Empty-5x5-v0'))
-#env.reset()
-#action_size = env.action_space.n
-#print(action_size)
-
-#for i in range(200):
-#    action = np.random.randint(0, action_size)
-#    env.step(action)
-#    env.render()
-
 class DQN(nn.Module):
     def __init__(self, state_size, action_size, hidden_shape):
         super(DQN, self).__init__()
         self.Q = nn.Sequential(
             nn.Linear(state_size, hidden_shape),
             nn.ReLU(),
-            #nn.Linear(hidden_shape, hidden_shape),
-            #nn.ReLU(),
             spectral_norm(nn.Linear(hidden_shape, hidden_shape)),
             nn.ReLU(),
             nn.Linear(hidden_shape, action_size),
@@ -55,65 +45,10 @@ class DQN(nn.Module):
         q = self.Q(x)
         return q
 
-class Memory(object):
-    def __init__(self, state_size, max_size):
-        self.max_size = max_size
-        self.pointer = 0
-        self.size = 0
-
-        self.state = np.zeros((max_size, state_size))
-        self.action = np.zeros((max_size, 1))
-        self.next_state = np.zeros((max_size, state_size))
-        self.reward = np.zeros((max_size, 1))
-        self.done_win = np.zeros((max_size, 1))
-    
-    def add(self, state, action, next_state, reward, done_win):
-        self.state[self.pointer] = state
-        self.action[self.pointer] = action
-        self.next_state[self.pointer] = next_state
-        self.reward[self.pointer] = reward
-        self.done_win[self.pointer] = done_win
-
-        self.pointer = (self.pointer + 1) % self.max_size
-        self.size = min(self.size + 1, self.max_size)
-
-    def sample(self, batch_size):
-        index = np.random.randint(0, self.size, size=batch_size)
-        with torch.no_grad():
-            return (
-                torch.FloatTensor(self.state[index]).to(device),
-                torch.Tensor(self.action[index]).long().to(device),
-                torch.FloatTensor(self.next_state[index]).to(device),
-                torch.FloatTensor(self.reward[index]).to(device),
-                torch.FloatTensor(self.done_win[index]).to(device)
-            )
-
-    def save(self):
-        scaller = np.array([self.max_size, self.pointer, self.size], dtype=np.uint32)
-        np.save("./buffer/scaller.npy", scaller)
-        np.save("./buffer/state.npy", self.state)
-        np.save("./buffer/action.npy", self.action)
-        np.save("./buffer/next_state.npy", self.next_state)
-        np.save("./buffer/reward.npy", self.reward)
-        np.save("./buffer/done_win.npy", self.done_win)
-    
-    def load(self):
-        scaller = np.load("./buffer/scaller.npy")
-
-        self.max_size = scaller[0]
-        self.pointer = scaller[1]
-        self.size = scaller[2]
-
-        self.state = np.load("./buffer/state.npy")
-        self.action = np.load("./buffer/action.npy")
-        self.next_state = np.load("./buffer/next_state.npy")
-        self.reward = np.load("./buffer/reward.npy")
-        self.done_win = np.load("./buffer/done_win.npy")
-
-
 class DQN_Agent:
     def __init__(self, env_name, seed, mem_size, gamma, eps, eps_min, update_eps, eps_decay, batch_size, target_update, hidden_shape, lr, tau):
         self.env = FlatObsWrapper(gym.make(env_name))
+        #self.env = ImgObsWrapper(self.env)
         self.env.seed(seed)
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.n
@@ -153,24 +88,24 @@ class DQN_Agent:
                 action = np.random.randint(0, self.action_size)
             else:
                 action = self.policy_net(state).argmax().item()
-        if self.steps_done % self.update_epsilon == 0:
-            self.epsilon *= self.epsilon_decay
-            self.epsilon = max(self.epsilon_min, self.epsilon)
+        #if self.current_episode[-1] % self.update_epsilon == 0:                        # steps_done changed to episodes done
+        #    self.epsilon *= self.epsilon_decay
+        #    self.epsilon = max(self.epsilon_min, self.epsilon)
         return action
 
-    def seaborn(self):
+    def seaborn(self, short_name, run):
         episode = np.array(self.current_episode)
         scores = np.array(self.episode_scores)
         df = {'episode': episode, 'score': scores}
         pdscores = pd.DataFrame(df)
-        #pdscores.to_csv('./data/3k_random_steps/run#3/results.csv')
+        pdscores.to_csv('./data/{}/run#{}/results.csv'.format(short_name, run + 1))
 
-        sns.lineplot(x='episode', y='score',data=pdscores)
+        #sns.lineplot(x='episode', y='score',data=pdscores)
 
-        plt.pause(0.001)
-        if is_ipython:
-            display.clear_output(wait=True)
-            display.display(plt.gcf())
+        #plt.pause(0.001)
+        #if is_ipython:
+        #    display.clear_output(wait=True)
+        #    display.display(plt.gcf())
 
     def optimize_model(self):
         state, action, next_state, reward, done_win = self.memory.sample(self.batch_size)
@@ -192,7 +127,7 @@ class DQN_Agent:
         for param, target_param in zip(self.policy_net.parameters(), self.target_net.parameters()):                                                     
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
-    def train(self, episodes):
+    def train(self, episodes, short_name, run):
         for i in range(episodes):
             state = self.env.reset()
             steps = 0
@@ -217,9 +152,12 @@ class DQN_Agent:
                     break
             if i % self.target_update == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
+            if self.current_episode[-1] % self.update_epsilon == 0:                        # steps_done changed to episodes done
+                self.epsilon *= self.epsilon_decay
+                self.epsilon = max(self.epsilon_min, self.epsilon) 
         self.env.close()
         print("Training Complete!")
-        self.seaborn()
+        self.seaborn(short_name, run)
         plt.ioff()
         plt.show()
 
@@ -229,9 +167,3 @@ class DQN_Agent:
     def load(self, algo, env_name, episodes):
         self.policy_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(algo, env_name, episodes)))        
         self.target_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(algo, env_name, episodes)))
-
-
-
-#Agent = DQN_Agent()
-#Agent.train(500)
-
