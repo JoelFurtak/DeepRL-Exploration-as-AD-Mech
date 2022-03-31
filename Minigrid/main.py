@@ -1,5 +1,5 @@
 import time
-import numpy
+import numpy as np
 import torch
 from itertools import count
 
@@ -10,7 +10,6 @@ from gym_minigrid.wrappers import FlatObsWrapper
 from dqn import DQN_Agent, Memory, device
 
 import argparse
-from datetime import datetime
 
 # Parameters
 #parser = argparse.ArgumentParser()
@@ -34,7 +33,7 @@ env_index = 2
 env_name = env_list[env_index]
 env_short_name = env_short_name_list[env_index]
 
-mem_size = 60000
+mem_size = 20000
 seed = 12
 epsilon = 1.0
 epsilon_min = 0.05
@@ -51,7 +50,7 @@ hidden_shape = 256
 tau = 0.005
 
 dqn_agent = DQN_Agent(env_name, seed, mem_size, gamma, epsilon, epsilon_min, update_epsilon, epsilon_decay, batch_size, target_update, hidden_shape, learning_rate, tau)
-dqn_agent.train(750, env_short_name, 3)
+#dqn_agent.train(750, env_short_name, 3)
 
 
 
@@ -67,9 +66,9 @@ dqn_agent.train(750, env_short_name, 3)
 #        dqn_agent.train(episodes, env_short_name, run)
 
 
-# Training Loop
-'''
-episodes = 500
+# Training Loop dqn
+
+episodes = 300
 
 for i in range(episodes):
     state = dqn_agent.env.reset()
@@ -81,7 +80,7 @@ for i in range(episodes):
         action = dqn_agent.select_action(state, episodes)
         next_state, reward, done, _ = dqn_agent.env.step(action)
 
-        if done and steps != dqn_agent.max_steps:
+        if done and steps != dqn_agent.env.max_steps:
             done_win = True
         else:
             done_win = False
@@ -93,9 +92,16 @@ for i in range(episodes):
         if done:
             dqn_agent.episode_scores.append(reward)
             break
+    avg_score = np.mean(dqn_agent.episode_scores[-100:])
+        
+    print('Episode: ', i + 1, ' Score: %.1f' % reward, ' Avg Score: %.1f' % avg_score, ' Steps done: ', dqn_agent.steps_done, ' Exploration: %.1f' % dqn_agent.epsilon)
+
     if i % target_update == 0:
         dqn_agent.target_net.load_state_dict(dqn_agent.policy_net.state_dict())
-    dqn_agent.env.close()
-    print("Training Complete!")
-    dqn_agent.seaborn()
-'''
+    if dqn_agent.current_episode[-1] % dqn_agent.update_epsilon == 0:                        # steps_done changed to episodes done
+            dqn_agent.epsilon *= dqn_agent.epsilon_decay
+            dqn_agent.epsilon = max(dqn_agent.epsilon_min, dqn_agent.epsilon) 
+
+dqn_agent.env.close()
+print("Training Complete!")
+dqn_agent.save_data(env_short_name, 4)
