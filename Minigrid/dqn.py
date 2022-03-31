@@ -18,9 +18,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
-from torch.nn.utils import spectral_norm
 
 from memory import Memory
+from model import DQN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -29,26 +29,9 @@ is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
 
-class DQN(nn.Module):
-    def __init__(self, state_size, action_size, hidden_shape):
-        super(DQN, self).__init__()
-        self.Q = nn.Sequential(
-            nn.Linear(state_size, hidden_shape),
-            nn.ReLU(),
-            spectral_norm(nn.Linear(hidden_shape, hidden_shape)),
-            nn.ReLU(),
-            nn.Linear(hidden_shape, action_size),
-            nn.Identity()
-        )
-
-    def forward(self, x):
-        q = self.Q(x)
-        return q
-
 class DQN_Agent:
     def __init__(self, env_name, seed, mem_size, gamma, eps, eps_min, update_eps, eps_decay, batch_size, target_update, hidden_shape, lr, tau):
         self.env = FlatObsWrapper(gym.make(env_name))
-        #self.env = ImgObsWrapper(self.env)
         self.env.seed(seed)
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.n
@@ -79,6 +62,7 @@ class DQN_Agent:
 
         self.current_episode = []
         self.episode_scores = []
+        self.steps_episode = []
 
     def select_action(self, state, episodes):
         print("Episode: {}/{}, Steps done: {}, epsilon %: {}".format(self.current_episode[-1], episodes, self.steps_done, self.epsilon))     
@@ -138,7 +122,7 @@ class DQN_Agent:
                 action = self.select_action(state, episodes)
                 next_state, reward, done, _ = self.env.step(action)
 
-                if done and steps != self.max_steps:
+                if done and steps != self.env.max_steps:
                     done_win = True
                 else:
                     done_win = False
@@ -149,6 +133,7 @@ class DQN_Agent:
                 self.optimize_model()
                 if done:
                     self.episode_scores.append(reward)
+                    self.steps_episode.append(steps)
                     break
             if i % self.target_update == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
