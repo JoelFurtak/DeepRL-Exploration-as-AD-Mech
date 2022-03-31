@@ -34,13 +34,13 @@ env_index = 2
 env_name = env_list[env_index]
 env_short_name = env_short_name_list[env_index]
 
-mem_size = 100000
+mem_size = 60000
 seed = 12
 epsilon = 1.0
 epsilon_min = 0.05
 #update_epsilon = 500
 update_epsilon = 5
-epsilon_decay = 0.95
+epsilon_decay = 0.97
 batch_size= 1028
 target_update = 10
 episodes = 1000
@@ -51,7 +51,7 @@ hidden_shape = 256
 tau = 0.005
 
 dqn_agent = DQN_Agent(env_name, seed, mem_size, gamma, epsilon, epsilon_min, update_epsilon, epsilon_decay, batch_size, target_update, hidden_shape, learning_rate, tau)
-dqn_agent.train(500, env_short_name, 1)
+dqn_agent.train(750, env_short_name, 3)
 
 
 
