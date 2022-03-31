@@ -65,7 +65,7 @@ class DQN_Agent:
         self.steps_episode = []
 
     def select_action(self, state, episodes):
-        print("Episode: {}/{}, Steps done: {}, epsilon %: {}".format(self.current_episode[-1], episodes, self.steps_done, self.epsilon))     
+        #print("Episode: {}/{}, Steps done: {}, epsilon %: {}".format(self.current_episode[-1], episodes, self.steps_done, self.epsilon))     
         with torch.no_grad():
             state = torch.FloatTensor(state.reshape(1, -1)).to(device)
             if np.random.rand() < self.epsilon:
@@ -77,7 +77,7 @@ class DQN_Agent:
         #    self.epsilon = max(self.epsilon_min, self.epsilon)
         return action
 
-    def seaborn(self, short_name, run):
+    def save_data(self, short_name, run):
         episode = np.array(self.current_episode)
         scores = np.array(self.episode_scores)
         df = {'episode': episode, 'score': scores}
@@ -142,7 +142,7 @@ class DQN_Agent:
                 self.epsilon = max(self.epsilon_min, self.epsilon) 
         self.env.close()
         print("Training Complete!")
-        self.seaborn(short_name, run)
+        self.save_data(short_name, run)
         plt.ioff()
         plt.show()
 
