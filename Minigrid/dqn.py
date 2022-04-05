@@ -64,17 +64,13 @@ class DQN_Agent:
         self.episode_scores = []
         self.steps_episode = []
 
-    def select_action(self, state, episodes):
-        #print("Episode: {}/{}, Steps done: {}, epsilon %: {}".format(self.current_episode[-1], episodes, self.steps_done, self.epsilon))     
+    def select_action(self, state, episodes):     
         with torch.no_grad():
             state = torch.FloatTensor(state.reshape(1, -1)).to(device)
             if np.random.rand() < self.epsilon:
                 action = np.random.randint(0, self.action_size)
             else:
                 action = self.policy_net(state).argmax().item()
-        #if self.current_episode[-1] % self.update_epsilon == 0:                        # steps_done changed to episodes done
-        #    self.epsilon *= self.epsilon_decay
-        #    self.epsilon = max(self.epsilon_min, self.epsilon)
         return action
 
     def save_data(self, short_name, run):
@@ -83,13 +79,6 @@ class DQN_Agent:
         df = {'episode': episode, 'score': scores}
         pdscores = pd.DataFrame(df)
         pdscores.to_csv('./data/{}/run#{}/results.csv'.format(short_name, run + 1))
-
-        #sns.lineplot(x='episode', y='score',data=pdscores)
-
-        #plt.pause(0.001)
-        #if is_ipython:
-        #    display.clear_output(wait=True)
-        #    display.display(plt.gcf())
 
     def optimize_model(self):
         state, action, next_state, reward, done_win = self.memory.sample(self.batch_size)
