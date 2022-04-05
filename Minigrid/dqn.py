@@ -111,44 +111,9 @@ class DQN_Agent:
         for param, target_param in zip(self.policy_net.parameters(), self.target_net.parameters()):                                                     
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
-    def train(self, episodes, short_name, run):
-        for i in range(episodes):
-            state = self.env.reset()
-            steps = 0
-            self.current_episode.append(i + 1)
-            for t in count():
-                steps += 1
-                self.env.render()
-                action = self.select_action(state, episodes)
-                next_state, reward, done, _ = self.env.step(action)
+    def save(self, alg, env_name, episodes):
+        torch.save(self.policy_net.state_dict(), "./model/{}_{}_{}.pth".format(alg, env_name, episodes))
 
-                if done and steps != self.env.max_steps:
-                    done_win = True
-                else:
-                    done_win = False
-
-                self.memory.add(state, action, next_state, reward, done_win)
-                self.steps_done += 1
-                state = next_state
-                self.optimize_model()
-                if done:
-                    self.episode_scores.append(reward)
-                    self.steps_episode.append(steps)
-                    break
-            if i % self.target_update == 0:
-                self.target_net.load_state_dict(self.policy_net.state_dict())
-            if self.current_episode[-1] % self.update_epsilon == 0:                        # steps_done changed to episodes done
-                self.epsilon *= self.epsilon_decay
-                self.epsilon = max(self.epsilon_min, self.epsilon) 
-        self.env.close()
-        print("Training Complete!")
-        self.save_data(short_name, run)
-        plt.ioff()
-        plt.show()
-
-    def save(self, algo, env_name, episodes):
-        torch.save(self.policy_net.state_dict(), "./model/{}_{}_{}.pth".format(algo, env_name, episodes))
-
-    def load(self, algo, env_name, episodes):
-        self.policy_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(algo, env_name, episodes)))        
-        self.target_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(algo, env_name, episodes)))
+    def load(self, alg, env_name, episodes):
+        self.policy_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(alg, env_name, episodes)))        
+        self.target_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(alg, env_name, episodes)))
