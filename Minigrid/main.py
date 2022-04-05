@@ -8,6 +8,8 @@ import gym_minigrid
 from gym_minigrid.wrappers import FlatObsWrapper
 
 from dqn import DQN_Agent, Memory, device
+from ppo import PPOAgent
+from utils import save_data, plot_average
 
 import argparse
 
@@ -33,14 +35,16 @@ env_index = 2
 env_name = env_list[env_index]
 env_short_name = env_short_name_list[env_index]
 
-mem_size = 20000
+#-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#DQN agent
+
+mem_size = 100000
 seed = 12
 epsilon = 1.0
 epsilon_min = 0.05
-#update_epsilon = 500
 update_epsilon = 5
 epsilon_decay = 0.97
-batch_size= 1028
+batch_size= 2056
 target_update = 10
 episodes = 1000
 
@@ -50,25 +54,8 @@ hidden_shape = 256
 tau = 0.005
 
 dqn_agent = DQN_Agent(env_name, seed, mem_size, gamma, epsilon, epsilon_min, update_epsilon, epsilon_decay, batch_size, target_update, hidden_shape, learning_rate, tau)
-#dqn_agent.train(750, env_short_name, 3)
-
-
-
-# Data Collector
-#for index in range(len(env_short_name_list)):
-#    print("Current Environment: {}".format(env_short_name_list[index]))
-#    env_name = env_list[index]
-#    env_short_name = env_short_name_list[index]
-    #dqn_agent = DQN_Agent(env_name, seed, mem_size, gamma, epsilon, epsilon_min, update_epsilon, epsilon_decay, batch_size, target_update, hidden_shape, learning_rate, tau)
-#    for run in range(5):
-#        print("Run: {}".format(run + 1))
-#        dqn_agent = DQN_Agent(env_name, seed, mem_size, gamma, epsilon, epsilon_min, update_epsilon, epsilon_decay, batch_size, target_update, hidden_shape, learning_rate, tau)
-#        dqn_agent.train(episodes, env_short_name, run)
-
-
-# Training Loop dqn
-
-episodes = 300
+'''
+episodes = 1000
 
 for i in range(episodes):
     state = dqn_agent.env.reset()
@@ -104,4 +91,50 @@ for i in range(episodes):
 
 dqn_agent.env.close()
 print("Training Complete!")
-dqn_agent.save_data(env_short_name, 4)
+dqn_agent.save_data(env_short_name, 5)
+'''
+#-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#PPO agent
+
+env = FlatObsWrapper(gym.make(env_name))
+env.seed(seed)
+N = 4096
+batch_size = 128
+n_epochs = 10
+alpha = 0.0003
+
+ppo_agent = PPOAgent(n_actions=env.action_space.n, batch_size=batch_size, alpha=alpha, n_epochs=n_epochs, input_dims=env.observation_space.shape)
+
+episodes = 1000
+best_score = env.reward_range[0]
+score_history = []
+current_episode = []
+learn_iters = 0
+avg_score = 0
+n_steps = 0
+
+for i in range(episodes):
+    obs = env.reset()
+    done = False
+    score = 0
+    current_episode.append(i+1)
+    while not done:
+        env.render()
+        action, prob, val = ppo_agent.choose_action(obs)
+        obs_, reward, done, info = env.step(action)
+        n_steps += 1
+        score += reward
+        ppo_agent.remember(obs, action, prob, val, reward, done)
+        if n_steps % N == 0:
+            ppo_agent.learn()
+            learn_iters += 1
+        obs = obs_
+    score_history.append(score)
+    avg_score = np.mean(score_history[-100:])
+
+    if avg_score > best_score:
+        best_score = avg_score
+
+    print('Episode: ', i + 1, ' Score: %.1f' % score, ' Avg Score: %.1f' % avg_score, ' Steps done: ', n_steps, 'Learning Steps done: ', learn_iters)
+
+save_data(episodes=current_episode, scores=score_history, alg='ppo', short_name=env_short_name, run=0)
