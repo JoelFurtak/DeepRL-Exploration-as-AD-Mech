@@ -39,7 +39,7 @@ env_short_name = env_short_name_list[env_index]
 #DQN agent
 
 mem_size = 100000
-seed = 12
+seed = 123
 epsilon = 1.0
 epsilon_min = 0.05
 update_epsilon = 5
@@ -105,36 +105,79 @@ alpha = 0.0003
 
 ppo_agent = PPOAgent(n_actions=env.action_space.n, batch_size=batch_size, alpha=alpha, n_epochs=n_epochs, input_dims=env.observation_space.shape)
 
-episodes = 1000
+episodes = 1500
 best_score = env.reward_range[0]
 score_history = []
 current_episode = []
 learn_iters = 0
 avg_score = 0
 n_steps = 0
+collision_counter = []
+pick_up_counter = []
+drops_counter = []
+toggles_counter = []
+turn_counter = []
+key_pickups = []
+key_drops = []
+doors_toggled = []
 
 for i in range(episodes):
     obs = env.reset()
     done = False
     score = 0
     current_episode.append(i+1)
+    collisions = 0
+    pick_up = 0
+    drop = 0
+    toggle = 0
+    key_pickup = 0
+    key_drop = 0
+    door_toggle = 0
+    turns = 0
     while not done:
-        env.render()
+        #env.render()
         action, prob, val = ppo_agent.choose_action(obs)
         obs_, reward, done, info = env.step(action)
         n_steps += 1
         score += reward
         ppo_agent.remember(obs, action, prob, val, reward, done)
+        if ((action == 0) or (action == 1)):
+            turns += 1
+        if ((action == 2) and (np.array_equal(obs, obs_))):
+            collisions += 1
+        if (action == 3):
+            pick_up += 1
+        if ((action == 3) and (not np.array_equal(obs, obs_))):
+            key_pickup += 1
+        if (action == 4):
+            drop += 1
+        if ((action == 4) and (not np.array_equal(obs, obs_))):
+            key_drop += 1
+        if (action == 5):
+            toggle += 1
+        if ((action == 5) and (not np.array_equal(obs, obs_))):
+            door_toggle += 1
+        
         if n_steps % N == 0:
             ppo_agent.learn()
             learn_iters += 1
         obs = obs_
+    collision_counter.append(collisions)
+    pick_up_counter.append(pick_up)
+    drops_counter.append(drop)
+    toggles_counter.append(toggle)
+    turn_counter.append(turns)
+    key_pickups.append(key_pickup)
+    key_drops.append(key_drop)
+    doors_toggled.append(door_toggle)
     score_history.append(score)
     avg_score = np.mean(score_history[-100:])
 
     if avg_score > best_score:
         best_score = avg_score
 
-    print('Episode: ', i + 1, ' Score: %.1f' % score, ' Avg Score: %.1f' % avg_score, ' Steps done: ', n_steps, 'Learning Steps done: ', learn_iters)
+    print('Episode: ', i + 1, ' Score: %.1f' % score, ' Avg Score: %.1f' % avg_score, ' Steps done: ', n_steps, 'Learning Steps done: ', learn_iters,\
+        '\nCollisions with wall or key: ', collisions, 'Pick ups: ', pick_up, 'Drops: ', drop, 'Toggles: ', toggle, 'Keys picked up: ', key_pickup, 'Keys dropped: ', key_drop, 'Doors toggled: ', door_toggle, 'Turns: ', turns)
 
-save_data(episodes=current_episode, scores=score_history, alg='ppo', short_name=env_short_name, run=0)
+save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter,\
+    alg='ppo', short_name=env_short_name, run=5)
