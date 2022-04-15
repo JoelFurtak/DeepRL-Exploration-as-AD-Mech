@@ -9,15 +9,17 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+from torch.distributions.categorical import Categorical
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class PPOAgent:
-    def __init__(self, n_actions, input_dims, gamma=0.99, alpha=0.0003, gae_lambda=0.95, policy_clip=0.2, batch_size=64, N=2048, n_epochs=10):
+    def __init__(self, n_actions, input_dims, gamma=0.99, alpha=0.0003, gae_lambda=0.95, policy_clip=0.2, batch_size=64, N=2048, n_epochs=10, ent_coef=0.01):
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
+        self.ent_coef = ent_coef
 
         self.actor = PPOActorNetwork(n_actions, input_dims, alpha)
         self.critic = PPOCriticNetwork(input_dims, alpha)
@@ -40,7 +42,7 @@ class PPOAgent:
         return action, probs, value
 
     def learn(self):
-        for _ in range(self.n_epochs):
+        for i in range(self.n_epochs):
             state_arr, action_arr, old_probs_arr, vals_arr, reward_arr, done_arr, batches = self.memory.generate_batches()
 
             values = vals_arr
@@ -76,7 +78,10 @@ class PPOAgent:
                 critic_loss = (returns - critic_value)**2
                 critic_loss = critic_loss.mean()
 
-                total_loss = actor_loss + 0.5 *critic_loss
+                # Entropy
+                entropy = dist.entropy().mean()
+
+                total_loss = actor_loss + 0.5 *critic_loss - self.ent_coef * entropy
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
                 total_loss.backward()
