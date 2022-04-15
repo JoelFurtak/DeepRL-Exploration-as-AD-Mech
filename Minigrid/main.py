@@ -180,4 +180,4 @@ for i in range(episodes):
         '\nCollisions with wall or key: ', collisions, 'Pick ups: ', pick_up, 'Drops: ', drop, 'Toggles: ', toggle, 'Keys picked up: ', key_pickup, 'Keys dropped: ', key_drop, 'Doors toggled: ', door_toggle, 'Turns: ', turns)
 
 save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter,\
-    alg='ppo', short_name=env_short_name, run=5)
+    alg='ppo', short_name=env_short_name, run=0)
