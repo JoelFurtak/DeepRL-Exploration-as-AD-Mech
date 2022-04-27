@@ -1,4 +1,5 @@
 import numpy as np 
+import math
 import gym 
 import gym_minigrid
 from memory import PPOMemory
@@ -108,11 +109,27 @@ class RNDAgent:
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
                 self.predictor.optimizer.zero_grad()
-                self.target.optimizer.zero_grad()
                 total_loss.backward()
                 self.actor.optimizer.step()
                 self.critic.optimizer.step()
                 self.predictor.optimizer.step()
-                self.target.optimizer.step()
         
         self.memory.clear_memory()
+
+class RunningEstimateStd:
+    def __init__(self):
+        self.mean = 0
+        self.var = 0
+        self.count = .0001
+
+    def update(self, mean, var, count):
+        diff = mean - self.mean
+        total_count = self.count + count
+
+        m_a = self.var * self.count
+        m_b = var * count
+        M2 = m_a + m_b + np.square(diff) * self.count * count / (self.count + count)
+
+        self.var = M2 / (self.count + count)
+        self.mean = self.mean + diff * count / total_count
+        self.count += count
