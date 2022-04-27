@@ -92,11 +92,11 @@ class PPOCriticNetwork(nn.Module):
         return value
 
 class RNDPredictor(nn.Module):
-    def __init__(self, input_dims, outpit_dims, learning_rate, hidden_dims=256):
+    def __init__(self, input_dims, outpit_dims, learning_rate, hidden_dims=512):
         super(RNDPredictor, self).__init__()
 
         self.predictor = nn.Sequential(
-            nn.Linear(1, hidden_dims),
+            nn.Linear(*input_dims, hidden_dims),
             nn.ReLU(),
             nn.Linear(hidden_dims, hidden_dims),
             nn.ReLU(),
@@ -112,11 +112,11 @@ class RNDPredictor(nn.Module):
         return prediction
 
 class RNDTarget(nn.Module):
-    def __init__(self, input_dims, output_dims, learning_rate, hidden_dims=256):
+    def __init__(self, input_dims, output_dims, learning_rate, hidden_dims=512):
         super(RNDTarget, self).__init__()
 
         self.target = nn.Sequential(
-            nn.Linear(1, hidden_dims),
+            nn.Linear(*input_dims, hidden_dims),
             nn.ReLU(),
             nn.Linear(hidden_dims, hidden_dims),
             nn.ReLU(),
@@ -125,6 +125,10 @@ class RNDTarget(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
         self.to(device)
+
+        # untraining Network
+        for param in self.target.parameters():
+            param.requires_grad = False
 
     def forward(self, state):
         target = self.target(state)
