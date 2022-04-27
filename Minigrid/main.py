@@ -9,6 +9,7 @@ from gym_minigrid.wrappers import FlatObsWrapper
 
 from dqn import DQN_Agent, Memory, device
 from ppo import PPOAgent
+from rnd import RNDAgent, RunningEstimateStd
 from utils import save_data, plot_average
 
 import argparse
@@ -94,7 +95,7 @@ print("Training Complete!")
 dqn_agent.save_data(env_short_name, 5)
 '''
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#PPO agent
+#PPO/ RND agent
 
 env = FlatObsWrapper(gym.make(env_name))
 env.seed(seed)
@@ -104,6 +105,14 @@ n_epochs = 10
 alpha = 0.0003
 
 ppo_agent = PPOAgent(n_actions=env.action_space.n, batch_size=batch_size, alpha=alpha, n_epochs=n_epochs, input_dims=env.observation_space.shape)
+rnd_agent = RNDAgent(n_actions=env.action_space.n, batch_size=batch_size, lr=alpha, n_epochs=n_epochs, input_dims=env.observation_space.shape)
+
+rnd = True
+if rnd:
+    agent = rnd_agent
+    total_int_reward = []
+else:
+    agent = ppo_agent
 
 episodes = 1500
 best_score = env.reward_range[0]
@@ -120,6 +129,7 @@ turn_counter = []
 key_pickups = []
 key_drops = []
 doors_toggled = []
+reward_rs = RunningEstimateStd()
 
 for i in range(episodes):
     obs = env.reset()
@@ -134,10 +144,19 @@ for i in range(episodes):
     key_drop = 0
     door_toggle = 0
     turns = 0
+    if rnd:
+        intrinsic_reward = 0
     while not done:
         #env.render()
         action, prob, val = ppo_agent.choose_action(obs)
         obs_, reward, done, info = env.step(action)
+        if rnd:
+            intrinsic_reward = rnd_agent.intrinsic_reward(obs)
+            total_rewards = np.array(score_history)
+            mean, std, c = np.mean(total_rewards), np.std(total_rewards), len(total_rewards)
+            reward_rs.update(mean, std**2, c)
+            intrinsic_reward /= np.sqrt(reward_rs.var)
+            reward += intrinsic_reward
         n_steps += 1
         score += reward
         ppo_agent.remember(obs, action, prob, val, reward, done)
@@ -162,6 +181,8 @@ for i in range(episodes):
             ppo_agent.learn()
             learn_iters += 1
         obs = obs_
+    if rnd:
+        total_int_reward.append(intrinsic_reward)
     collision_counter.append(collisions)
     pick_up_counter.append(pick_up)
     drops_counter.append(drop)
