@@ -2,6 +2,7 @@ import time
 import numpy as np
 import torch
 from itertools import count
+import math
 
 import gym
 import gym_minigrid
@@ -155,7 +156,8 @@ for i in range(episodes):
             total_rewards = np.array(score_history)
             mean, std, c = np.mean(total_rewards), np.std(total_rewards), len(total_rewards)
             reward_rs.update(mean, std**2, c)
-            intrinsic_reward /= np.sqrt(reward_rs.var)
+            intrinsic_reward /= math.sqrt(reward_rs.var)
+            print(f'debug {intrinsic_reward}')
             reward += intrinsic_reward
         n_steps += 1
         score += reward
@@ -197,8 +199,7 @@ for i in range(episodes):
     if avg_score > best_score:
         best_score = avg_score
 
-    print('Episode: ', i + 1, ' Score: %.1f' % score, ' Avg Score: %.1f' % avg_score, ' Steps done: ', n_steps, 'Learning Steps done: ', learn_iters,\
-        '\nCollisions with wall or key: ', collisions, 'Pick ups: ', pick_up, 'Drops: ', drop, 'Toggles: ', toggle, 'Keys picked up: ', key_pickup, 'Keys dropped: ', key_drop, 'Doors toggled: ', door_toggle, 'Turns: ', turns)
+    print(f'Episode: {i+1}, Score: {score}, Avg Score: {avg_score}, Steps done: {n_steps}, Learning Steps done: {learn_iters}, \nCollisions: {collisions}, Pick ups: {pick_up}, Drops: {drop}, Toggles: {toggle}, Keys picked up: {key_pickup}, Keys dropped: {key_drop}, Doors toggled: {door_toggle}, Turns: {turns}')
 
 save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter,\
     alg='ppo', short_name=env_short_name, run=0)
