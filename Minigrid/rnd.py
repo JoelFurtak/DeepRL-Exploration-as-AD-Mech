@@ -27,8 +27,8 @@ class RNDAgent:
         self.critic = PPOCriticNetwork(input_dims, lr)
         self.memory = PPOMemory(batch_size)
 
-        self.predictor = RNDPredictor(input_dims, n_actions, lr)
-        self.target = RNDTarget(input_dims, n_actions, lr)
+        self.predictor = RNDPredictor(input_dims, n_actions, 1e-4)
+        self.target = RNDTarget(input_dims, n_actions, 1e-4)
 
     def remember(self, state, action, probs, vals, reward, done):
         self.memory.store_memory(state, action, probs, vals, reward, done)
@@ -52,7 +52,7 @@ class RNDAgent:
         target = self.target(observation)
         prediction = self.predictor(observation)
 
-        intrinsic_reward = (target - prediction).pow(2).sum(1) / 2
+        intrinsic_reward = (target - prediction).pow(2).sum() / 2
 
         return intrinsic_reward.data.cpu().numpy()
 
@@ -128,7 +128,7 @@ class RunningEstimateStd:
 
         m_a = self.var * self.count
         m_b = var * count
-        M2 = m_a + m_b + np.square(diff) * self.count * count / (self.count + count)
+        M2 = m_a + m_b + (diff**2) * self.count * count / (self.count + count)
 
         self.var = M2 / (self.count + count)
         self.mean = self.mean + diff * count / total_count
