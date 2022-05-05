@@ -169,7 +169,7 @@ for i in range(episodes):
             #print(f'debug {intrinsic_reward}')
             total_int_reward.append(intrinsic_reward)
             total_rewards = np.array(total_int_reward)
-            intrinsic_reward *= 0.0001
+            intrinsic_reward *= 0.00001
             reward += intrinsic_reward
         #print(f'debug reward + int: {reward}')
         n_steps += 1
@@ -217,4 +217,4 @@ for i in range(episodes):
     print(f'Episode: {i+1}, Score: {score:.2f}, Avg Score: {avg_score:.2f}, Steps done: {n_steps}, Learning Steps done: {learn_iters}') #, \nCollisions: {collisions}, Pick ups: {pick_up}, Drops: {drop}, Toggles: {toggle}, Keys picked up: {key_pickup}, Keys dropped: {key_drop}, Doors toggled: {door_toggle}, Turns: {turns}')
 
 save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter, intrinsic_reward=ep_total_int_reward,\
-    alg='rnd', short_name=env_short_name, run=4)
+    alg='rnd', short_name=env_short_name, run=1)
