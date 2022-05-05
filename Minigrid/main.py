@@ -10,7 +10,7 @@ from gym_minigrid.wrappers import FlatObsWrapper
 
 from dqn import DQN_Agent, Memory, device
 from ppo import PPOAgent
-from rnd import RNDAgent, RunningEstimateStd
+from rnd import RNDAgent
 from utils import save_data, plot_average
 
 import argparse
@@ -112,10 +112,11 @@ rnd = True
 if rnd:
     agent = rnd_agent
     total_int_reward = []
+    ep_total_int_reward = []
 else:
     agent = ppo_agent
 
-episodes = 1500
+episodes = 500
 best_score = env.reward_range[0]
 score_history = []
 current_episode = []
@@ -130,7 +131,8 @@ turn_counter = []
 key_pickups = []
 key_drops = []
 doors_toggled = []
-reward_rs = RunningEstimateStd()
+#reward_rs = RunningEstimateStd()
+total_rewards = np.zeros(episodes)
 
 for i in range(episodes):
     obs = env.reset()
@@ -146,21 +148,34 @@ for i in range(episodes):
     door_toggle = 0
     turns = 0
     if rnd:
+        ep_intrinsic_reward = 0
         intrinsic_reward = 0
     while not done:
         #env.render()
         action, prob, val = ppo_agent.choose_action(obs)
         obs_, reward, done, info = env.step(action)
+        #print(f'debug reward: {reward}')
         if rnd:
             intrinsic_reward = rnd_agent.intrinsic_reward(obs)
-            total_rewards = np.array(score_history)
-            mean, std, c = np.mean(total_rewards), np.std(total_rewards), len(total_rewards)
-            reward_rs.update(mean, std**2, c)
-            intrinsic_reward /= math.sqrt(reward_rs.var)
-            print(f'debug {intrinsic_reward}')
+            #print(f'debug {intrinsic_reward}')
+            #total_int_rewards = np.zeros(len(score_history))
+            #mean, std, c = np.mean(total_rewards), np.std(total_rewards), len(score_history)
+            #print(f'Debug mean... {mean}{std}{c}')
+            #reward_rs.update(mean, std**2, c)
+            if (np.std(total_rewards) > 0):
+                intrinsic_reward /= np.std(total_rewards)
+            else:
+                intrinsic_reward = intrinsic_reward
+            #print(f'debug {intrinsic_reward}')
+            total_int_reward.append(intrinsic_reward)
+            total_rewards = np.array(total_int_reward)
+            intrinsic_reward *= 0.0001
             reward += intrinsic_reward
+        #print(f'debug reward + int: {reward}')
         n_steps += 1
         score += reward
+        ep_intrinsic_reward += intrinsic_reward
+        #print(f'Debug: ep int reward : {ep_intrinsic_reward}')
         ppo_agent.remember(obs, action, prob, val, reward, done)
         if ((action == 0) or (action == 1)):
             turns += 1
@@ -183,8 +198,6 @@ for i in range(episodes):
             ppo_agent.learn()
             learn_iters += 1
         obs = obs_
-    if rnd:
-        total_int_reward.append(intrinsic_reward)
     collision_counter.append(collisions)
     pick_up_counter.append(pick_up)
     drops_counter.append(drop)
@@ -195,11 +208,13 @@ for i in range(episodes):
     doors_toggled.append(door_toggle)
     score_history.append(score)
     avg_score = np.mean(score_history[-100:])
+    if rnd:
+        ep_total_int_reward.append(ep_intrinsic_reward)
 
     if avg_score > best_score:
         best_score = avg_score
 
-    print(f'Episode: {i+1}, Score: {score}, Avg Score: {avg_score}, Steps done: {n_steps}, Learning Steps done: {learn_iters}, \nCollisions: {collisions}, Pick ups: {pick_up}, Drops: {drop}, Toggles: {toggle}, Keys picked up: {key_pickup}, Keys dropped: {key_drop}, Doors toggled: {door_toggle}, Turns: {turns}')
+    print(f'Episode: {i+1}, Score: {score:.2f}, Avg Score: {avg_score:.2f}, Steps done: {n_steps}, Learning Steps done: {learn_iters}') #, \nCollisions: {collisions}, Pick ups: {pick_up}, Drops: {drop}, Toggles: {toggle}, Keys picked up: {key_pickup}, Keys dropped: {key_drop}, Doors toggled: {door_toggle}, Turns: {turns}')
 
-save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter,\
-    alg='ppo', short_name=env_short_name, run=0)
+save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter, intrinsic_reward=ep_total_int_reward,\
+    alg='rnd', short_name=env_short_name, run=4)
