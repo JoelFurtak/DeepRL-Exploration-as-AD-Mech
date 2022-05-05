@@ -115,21 +115,3 @@ class RNDAgent:
                 self.predictor.optimizer.step()
         
         self.memory.clear_memory()
-
-class RunningEstimateStd:
-    def __init__(self):
-        self.mean = 0
-        self.var = 0
-        self.count = .0001
-
-    def update(self, mean, var, count):
-        diff = mean - self.mean
-        total_count = self.count + count
-
-        m_a = self.var * self.count
-        m_b = var * count
-        M2 = m_a + m_b + (diff**2) * self.count * count / (self.count + count)
-
-        self.var = M2 / (self.count + count)
-        self.mean = self.mean + diff * count / total_count
-        self.count += count
