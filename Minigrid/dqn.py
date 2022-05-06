@@ -60,11 +60,10 @@ class DQN_Agent:
         for p in self.target_net.parameters():
             p.requires_grad = False
 
-        self.current_episode = []
-        self.episode_scores = []
-        self.steps_episode = []
+    def remember(self, state, action, next_state, reward, done_win):
+        self.memory.add(state, action, next_state, reward, done_win)
 
-    def select_action(self, state, episodes):     
+    def choose_action(self, state):     
         with torch.no_grad():
             state = torch.FloatTensor(state.reshape(1, -1)).to(device)
             if np.random.rand() < self.epsilon:
@@ -73,14 +72,7 @@ class DQN_Agent:
                 action = self.policy_net(state).argmax().item()
         return action
 
-    def save_data(self, short_name, run):
-        episode = np.array(self.current_episode)
-        scores = np.array(self.episode_scores)
-        df = {'episode': episode, 'score': scores}
-        pdscores = pd.DataFrame(df)
-        pdscores.to_csv('./data/{}/run#{}/results.csv'.format(short_name, run + 1))
-
-    def optimize_model(self):
+    def learn(self):
         state, action, next_state, reward, done_win = self.memory.sample(self.batch_size)
         
         with torch.no_grad():
