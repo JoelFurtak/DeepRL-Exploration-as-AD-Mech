@@ -92,7 +92,7 @@ class PPOCriticNetwork(nn.Module):
         return value
 
 class RNDPredictor(nn.Module):
-    def __init__(self, input_dims, outpit_dims, learning_rate, hidden_dims=512):
+    def __init__(self, input_dims, output_dims, learning_rate, hidden_dims=512):
         super(RNDPredictor, self).__init__()
 
         self.predictor = nn.Sequential(
