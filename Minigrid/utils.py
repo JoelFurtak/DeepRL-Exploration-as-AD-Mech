@@ -3,10 +3,11 @@ import pandas as pd
 import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
+import math
 
 #sns.set_style(style='darkgrid')
 
-def save_data(episodes, scores, collisions, pick_ups, drops, toggles, key_pickups, key_drops, door_toggles, turns, alg, short_name, run):
+def save_data(episodes, scores, collisions, pick_ups, drops, toggles, key_pickups, key_drops, door_toggles, turns, intrinsic_reward, alg, short_name, run):
     episodes = np.array(episodes)
     scores = np.array(scores)
     collisions = np.array(collisions)
@@ -17,9 +18,10 @@ def save_data(episodes, scores, collisions, pick_ups, drops, toggles, key_pickup
     key_drops = np.array(key_drops)
     door_toggles = np.array(door_toggles)
     turns = np.array(turns)
+    intrinsic_reward = np.array(intrinsic_reward)
 
     print('... saving data ...')
-    df = {'episode': episodes, 'score': scores, 'collisions': collisions, 'pick_ups': pick_ups, 'drops': drops, 'toggles': toggles, 'key_pickups': key_pickups, 'key_drops': key_drops, 'door_toggles':door_toggles, 'turns':turns}
+    df = {'episode': episodes, 'score': scores, 'collisions': collisions, 'pick_ups': pick_ups, 'drops': drops, 'toggles': toggles, 'key_pickups': key_pickups, 'key_drops': key_drops, 'door_toggles':door_toggles, 'turns':turns, 'intrinsic_reward':intrinsic_reward}
     df = pd.DataFrame(df)
     df.to_csv('./data/{}/{}/run#{}/results.csv'.format(alg, short_name, run + 1))
 
