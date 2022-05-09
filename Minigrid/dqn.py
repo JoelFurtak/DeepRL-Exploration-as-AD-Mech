@@ -30,29 +30,21 @@ if is_ipython:
     from IPython import display
 
 class DQN_Agent:
-    def __init__(self, env_name, seed, mem_size, gamma, eps, eps_min, update_eps, eps_decay, batch_size, target_update, hidden_shape, lr, tau):
-        self.env = FlatObsWrapper(gym.make(env_name))
-        self.env.seed(seed)
-        self.state_size = self.env.observation_space.shape[0]
-        self.action_size = self.env.action_space.n
+    def __init__(self, state_size, action_size, mem_size, gamma, epsilon, batch_size, target_update, hidden_shape, lr, tau):
+        self.state_size = state_size
+        self.action_size = action_size
         
         self.memory = Memory(self.state_size, max_size=mem_size)
         self.gamma = gamma
-        self.epsilon = eps
-        self.epsilon_min = eps_min
-        self.update_epsilon = update_eps
-        self.epsilon_decay = eps_decay
+        self.epsilon = epsilon
         self.batch_size = batch_size
         self.target_update = target_update
 
         self.steps_done = 0
-        self.max_steps = 500
 
         self.hidden_shape = hidden_shape
         self.lr = lr
         self.tau  = tau
-
-        self.env.reset()
 
         self.policy_net = DQN(self.state_size, self.action_size, self.hidden_shape).to(device)
         self.policy_net_optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
