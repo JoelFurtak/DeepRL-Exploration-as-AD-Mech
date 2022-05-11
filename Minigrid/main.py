@@ -40,6 +40,7 @@ seed = 123
 
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #DQN agent
+'''
 env = FlatObsWrapper(gym.make(env_name))
 env.seed(seed)
 
@@ -159,10 +160,10 @@ env.close()
 print("Training Complete!")
 save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter, intrinsic_reward=ep_total_int_reward,\
     alg='dqn', short_name=env_short_name, run=2)
-
+'''
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #PPO/ RND agent
-'''
+
 env = FlatObsWrapper(gym.make(env_name))
 env.seed(seed)
 N = 4096
@@ -176,8 +177,6 @@ rnd_agent = RNDAgent(n_actions=env.action_space.n, batch_size=batch_size, lr=alp
 rnd = True
 if rnd:
     agent = rnd_agent
-    total_int_reward = []
-    ep_total_int_reward = []
 else:
     agent = ppo_agent
 
@@ -197,6 +196,8 @@ key_pickups = []
 key_drops = []
 doors_toggled = []
 #reward_rs = RunningEstimateStd()
+total_int_reward = []
+ep_total_int_reward = []
 total_rewards = np.zeros(episodes)
 
 for i in range(episodes):
@@ -212,16 +213,15 @@ for i in range(episodes):
     key_drop = 0
     door_toggle = 0
     turns = 0
-    if rnd:
-        ep_intrinsic_reward = 0
-        intrinsic_reward = 0
+    ep_intrinsic_reward = 0
+    intrinsic_reward = 0
     while not done:
         #env.render()
-        action, prob, val = ppo_agent.choose_action(obs)
+        action, prob, val = agent.choose_action(obs)
         obs_, reward, done, info = env.step(action)
         #print(f'debug reward: {reward}')
         if rnd:
-            intrinsic_reward = rnd_agent.intrinsic_reward(obs)
+            intrinsic_reward = agent.intrinsic_reward(obs)
             #print(f'debug {intrinsic_reward}')
             #total_int_rewards = np.zeros(len(score_history))
             #mean, std, c = np.mean(total_rewards), np.std(total_rewards), len(score_history)
@@ -241,7 +241,7 @@ for i in range(episodes):
         score += reward
         ep_intrinsic_reward += intrinsic_reward
         #print(f'Debug: ep int reward : {ep_intrinsic_reward}')
-        ppo_agent.remember(obs, action, prob, val, reward, done)
+        agent.remember(obs, action, prob, val, reward, done)
         if ((action == 0) or (action == 1)):
             turns += 1
         if ((action == 2) and (np.array_equal(obs, obs_))):
@@ -260,7 +260,7 @@ for i in range(episodes):
             door_toggle += 1
         
         if n_steps % N == 0:
-            ppo_agent.learn()
+            agent.learn()
             learn_iters += 1
         obs = obs_
     collision_counter.append(collisions)
@@ -273,8 +273,7 @@ for i in range(episodes):
     doors_toggled.append(door_toggle)
     score_history.append(score)
     avg_score = np.mean(score_history[-100:])
-    if rnd:
-        ep_total_int_reward.append(ep_intrinsic_reward)
+    ep_total_int_reward.append(ep_intrinsic_reward)
 
     if avg_score > best_score:
         best_score = avg_score
@@ -282,5 +281,4 @@ for i in range(episodes):
     print(f'Episode: {i+1}, Score: {score:.2f}, Avg Score: {avg_score:.2f}, Steps done: {n_steps}, Learning Steps done: {learn_iters}') #, \nCollisions: {collisions}, Pick ups: {pick_up}, Drops: {drop}, Toggles: {toggle}, Keys picked up: {key_pickup}, Keys dropped: {key_drop}, Doors toggled: {door_toggle}, Turns: {turns}')
 
 save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter, intrinsic_reward=ep_total_int_reward,\
-    alg='rnd', short_name=env_short_name, run=0)
-'''
+    alg='ppo_rnd', short_name=env_short_name, run=2)
