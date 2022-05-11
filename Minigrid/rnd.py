@@ -82,7 +82,8 @@ class RNDAgent:
                 predict_next = self.predictor(states)
                 target_next = self.target(states)
 
-                forward_loss = nn.MSELoss(predict_next, target_next.detach()).mean(-1)
+                forward_loss = nn.MSELoss(reduction='none')
+                forward_loss = forward_loss(predict_next, target_next.detach()).mean(-1)
                 mask = torch.rand(len(forward_loss)).to(device)
                 mask = (mask < self.update_prop).type(torch.FloatTensor).to(device)
                 forward_loss = (forward_loss * mask).sum() / torch.max(mask.sum(), torch.Tensor([1]).to(device))
