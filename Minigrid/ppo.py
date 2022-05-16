@@ -89,3 +89,11 @@ class PPOAgent:
                 self.critic.optimizer.step()
         
         self.memory.clear_memory()
+
+    def save(self, alg, env_name, run):
+        torch.save(self.actor.state_dict(), f"./model/{alg}_{env_name}_{run}.pth")
+        torch.save(self.critic.state_dict(), f"./model/{alg}_{env_name}_{run}.pth")
+
+    def load(self, alg, env_name, run):
+        self.actor.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}.pth"))        
+        self.critic.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}.pth"))
