@@ -15,13 +15,14 @@ from torch.distributions.categorical import Categorical
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class RNDAgent:
-    def __init__(self, n_actions, input_dims, gamma=0.99, lr=0.0003, gae_lambda=0.95, policy_clip=0.2, batch_size=64, n_epochs=10, ent_coef=0.01, update_prop=0.25):
+    def __init__(self, n_actions, input_dims, gamma=0.99, lr=0.0003, gae_lambda=0.95, policy_clip=0.2, batch_size=64, n_epochs=10, ent_coef=0.01, update_prop=0.25, rnd_coef=0.25):
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
         self.ent_coef = ent_coef
         self.update_prop = update_prop
+        self.rnd_coef = rnd_coef
 
         self.actor = PPOActorNetwork(n_actions, input_dims, lr)
         self.critic = PPOCriticNetwork(input_dims, lr)
@@ -106,7 +107,7 @@ class RNDAgent:
                 # Entropy
                 entropy = dist.entropy().mean()
 
-                total_loss = actor_loss + 0.5 * critic_loss - self.ent_coef * entropy + forward_loss
+                total_loss = actor_loss + 0.5 * critic_loss - self.ent_coef * entropy + forward_loss * self.rnd_coef
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
                 self.predictor.optimizer.zero_grad()
@@ -124,6 +125,7 @@ class RNDAgent:
         torch.save(self.predictor.state_dict(), f"./model/{alg}_{env_name}_{run}_predictor.pth")
 
     def load(self, alg, env_name, run):
+        print('... loading model ...')
         self.actor.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}_actor.pth"))        
         self.critic.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}_critic.pth"))
         self.predictor.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}_predictor.pth"))
