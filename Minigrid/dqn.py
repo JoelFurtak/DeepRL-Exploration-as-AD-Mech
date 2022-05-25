@@ -84,9 +84,9 @@ class DQN_Agent:
         for param, target_param in zip(self.policy_net.parameters(), self.target_net.parameters()):                                                     
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
-    def save(self, alg, env_name, episodes):
-        torch.save(self.policy_net.state_dict(), "./model/{}_{}_{}.pth".format(alg, env_name, episodes))
+    def save(self, alg, env_name, run):
+        torch.save(self.policy_net.state_dict(), f"./model/{alg}_{env_name}_{run}.pth")
 
-    def load(self, alg, env_name, episodes):
-        self.policy_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(alg, env_name, episodes)))        
-        self.target_net.load_state_dict(torch.load("./model/{}_{}_{}.pth".format(alg, env_name, episodes)))
+    def load(self, alg, env_name, run):
+        self.policy_net.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}.pth"))        
+        self.target_net.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}.pth"))
