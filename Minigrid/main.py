@@ -31,7 +31,7 @@ import argparse
 #parser.add_argument('--epsilon', type= float, default=1.0, help='Exploration rate.')
 #args = parser.parse_args()
 
-env_list = ['MiniGrid-Empty-6x6-v0', 'MiniGrid-Empty-Random-6x6-v0', 'MiniGrid-DoorKey-6x6-v0', 'MiniGrid-MultiRoom-N4-S5-v0', 'MiniGrid-KeyCorridorS3R2-v0']
+env_list = ['MiniGrid-Empty-6x6-v0', 'MiniGrid-Empty-Random-6x6-v0', 'MiniGrid-DoorKey-6x6-v0', 'MiniGrid-MultiRoom-N4-S5-v0', 'MiniGrid-KeyCorridorS3R3-v0']
 env_short_name_list = ['mpt6x6', 'rnd6x6', 'dk6x6', 'multi', 'keyco']
 env_index = 4
 env_name = env_list[env_index]
@@ -167,9 +167,9 @@ save_data(episodes=current_episode, scores=score_history, collisions=collision_c
 env = gym.make(env_name)
 env = FlatObsWrapper(env)
 env.seed(seed)
-N = 4096                                   # 4096 8192
-batch_size = 512                           # 128 512 1024 2048
-n_epochs = 4
+N = 2048                                   # 4096 8192
+batch_size = 64                           # 128 512 1024 2048
+n_epochs = 5
 alpha = 0.0003
 alg = 'novelid'
 
@@ -184,7 +184,7 @@ if rnd:
 else:
     agent = ppo_agent
 
-episodes = 1000
+episodes = 2000
 best_score = env.reward_range[0]
 score_history = []
 current_episode = []
@@ -205,7 +205,7 @@ total_rewards = np.zeros(episodes)
 
 curriculum = False
 if curriculum:
-    agent.load(alg='novelid', env_name=env_short_name, run=1)
+    agent.load(alg='novelid', env_name=env_short_name, run=201)
 
 for i in range(episodes):
     obs = env.reset()
@@ -236,14 +236,13 @@ for i in range(episodes):
                 intrinsic_reward = intrinsic_reward
             total_int_reward.append(intrinsic_reward)
             total_rewards = np.array(total_int_reward)
-            intrinsic_reward *= 7e-4                                            #0.00003
+            intrinsic_reward *= 1e-3                                            #0.00003
             if novelid:
-                for obs in states:
-                    if np.array_equal(obs_, obs):
-                        intrinsic_reward = 0.
-                    else:
-                        intrinsic_reward = intrinsic_reward
+                for state in states:
+                    if np.array_equal(obs_, state):
+                        intrinsic_reward *= 0
             reward += intrinsic_reward
+            #print(f'debug: int reward: {intrinsic_reward}')
         n_steps += 1
         score += reward - intrinsic_reward
         ep_intrinsic_reward += intrinsic_reward
@@ -286,6 +285,6 @@ for i in range(episodes):
 
     print(f'Episode: {i+1}, Score: {score:.2f}, Intrinsic Reward: {ep_intrinsic_reward:.2f}, Avg Score: {avg_score:.2f}, Steps done: {n_steps}, Learning Steps done: {learn_iters}') #, \nCollisions: {collisions}, Pick ups: {pick_up}, Drops: {drop}, Toggles: {toggle}, Keys picked up: {key_pickup}, Keys dropped: {key_drop}, Doors toggled: {door_toggle}, Turns: {turns}')
 
-agent.save(alg='novelid', env_name=env_short_name, run=2)
+agent.save(alg='novelid', env_name=env_short_name, run=3)
 save_data(episodes=current_episode, scores=score_history, collisions=collision_counter, pick_ups=pick_up_counter, drops=drops_counter, toggles=toggles_counter, key_pickups=key_pickups, key_drops=key_drops, door_toggles=doors_toggled, turns=turn_counter, intrinsic_reward=ep_total_int_reward,\
-    alg='novelid', short_name=env_short_name, run=1)
+    alg='novelid', short_name=env_short_name, run=2)
