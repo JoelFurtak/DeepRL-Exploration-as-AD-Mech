@@ -15,7 +15,7 @@ from torch.distributions.categorical import Categorical
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class RNDAgent:
-    def __init__(self, n_actions, input_dims, gamma=0.99, lr=0.0003, gae_lambda=0.95, policy_clip=0.2, batch_size=64, n_epochs=10, ent_coef=0.01, update_prop=0.25, rnd_coef=0.25):
+    def __init__(self, n_actions, input_dims, gamma=0.99, lr=0.0003, gae_lambda=0.95, policy_clip=0.2, batch_size=64, n_epochs=10, ent_coef=0.005, update_prop=0.25, rnd_coef=1.0):
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
@@ -53,7 +53,7 @@ class RNDAgent:
         target = self.target(observation)
         prediction = self.predictor(observation)
 
-        intrinsic_reward = (target - prediction).pow(2).sum() / 2
+        intrinsic_reward = torch.linalg.norm(target - prediction).pow(2) / 2
 
         return intrinsic_reward.data.cpu().numpy()
 
@@ -79,15 +79,19 @@ class RNDAgent:
                 old_probs = torch.tensor(old_probs_arr[batch]).to(device)
                 actions = torch.tensor(action_arr[batch]).to(device)
 
-                # RND
+                #--------------------------------------- RND ----------------------------------------------------------------------
                 predict_next = self.predictor(states)
                 target_next = self.target(states)
-
-                forward_loss = nn.MSELoss(reduction='none')
-                forward_loss = forward_loss(predict_next, target_next.detach()).mean(-1)
-                mask = torch.rand(len(forward_loss)).to(device)
-                mask = (mask < self.update_prop).type(torch.FloatTensor).to(device)
-                forward_loss = (forward_loss * mask).sum() / torch.max(mask.sum(), torch.Tensor([1]).to(device))
+                
+                forward_loss = torch.norm(predict_next - target_next.detach(), p=2)
+                forward_loss = forward_loss.mean() * self.rnd_coef
+                #forward_loss = nn.MSELoss(reduction='none')
+                #forward_loss = forward_loss(predict_next, target_next)
+                #forward_loss = forward_loss(predict_next, target_next.detach()).mean(-1)
+                #mask = torch.rand(len(forward_loss)).to(device)
+                #mask = (mask < self.update_prop).type(torch.FloatTensor).to(device)
+                #forward_loss = (forward_loss * mask).sum() / torch.max(mask.sum(), torch.Tensor([1]).to(device))
+                #-------------------------------------------------------------------------------------------------------------------
 
                 dist = self.actor(states)
                 critic_value = self.critic(states)
@@ -106,8 +110,10 @@ class RNDAgent:
 
                 # Entropy
                 entropy = dist.entropy().mean()
+                entropy_loss = entropy * self.ent_coef
 
-                total_loss = actor_loss + 0.5 * critic_loss - self.ent_coef * entropy + forward_loss * self.rnd_coef
+                total_loss = actor_loss + 0.5 * critic_loss - entropy_loss + forward_loss
+                #print(f'Total loss: {total_loss}, Actor loss: {actor_loss}, Critic loss: {critic_loss}, RND loss: {forward_loss}, Entropy loss: {entropy_loss}, Epoch: {i}')
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
                 self.predictor.optimizer.zero_grad()
