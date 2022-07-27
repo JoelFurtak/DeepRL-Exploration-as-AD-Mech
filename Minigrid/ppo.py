@@ -2,7 +2,7 @@ import numpy as np
 import gym 
 import gym_minigrid
 from memory import PPOMemory, Memory
-from model import PPOActorNetwork, PPOCriticNetwork
+from model import PPOActorNetwork, PPOCriticNetwork, PPOActorConv, PPOCriticConv
 
 import torch
 import torch.nn as nn
@@ -30,6 +30,7 @@ class PPOAgent:
 
     def choose_action(self, observation):
         state = torch.tensor(observation, dtype=torch.float).to(device)
+        #state.view((1, 1) + state.shape)
 
         dist = self.actor(state)
         value = self.critic(state)
@@ -91,9 +92,11 @@ class PPOAgent:
         self.memory.clear_memory()
 
     def save(self, alg, env_name, run):
-        torch.save(self.actor.state_dict(), f"./model/{alg}_{env_name}_{run}.pth")
-        torch.save(self.critic.state_dict(), f"./model/{alg}_{env_name}_{run}.pth")
+        torch.save(self.actor.state_dict(), f"./model/{alg}_{env_name}_{run}_actor.pth")
+        torch.save(self.critic.state_dict(), f"./model/{alg}_{env_name}_{run}_critic.pth")
+        print(f'... model saved ...')
 
     def load(self, alg, env_name, run):
-        self.actor.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}.pth"))        
-        self.critic.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}.pth"))
+        self.actor.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}_actor.pth"))        
+        self.critic.load_state_dict(torch.load(f"./model/{alg}_{env_name}_{run}_critic.pth"))
+        print(f'... model loaded ...')
